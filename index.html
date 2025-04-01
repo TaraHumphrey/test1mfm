@@ -1,383 +1,477 @@
-// Define all ARRS roles with their maximum annual reimbursement
-const ARRS_ROLES = [
-  { id: 'clinical-pharmacist', name: 'Clinical Pharmacist', maxAnnual: 66972 },
-  { id: 'pharmacy-technician', name: 'Pharmacy Technician', maxAnnual: 43352 },
-  { id: 'social-prescriber', name: 'Social Prescribing Link Worker', maxAnnual: 43352 },
-  { id: 'health-wellbeing-coach', name: 'Health and Wellbeing Coach', maxAnnual: 43352 },
-  { id: 'care-coordinator', name: 'Care Coordinator', maxAnnual: 36150 },
-  { id: 'physician-associate', name: 'Physician Associate', maxAnnual: 64907 },
-  { id: 'first-contact-physio', name: 'First Contact Physiotherapist', maxAnnual: 66972 },
-  { id: 'dietician', name: 'Dietician', maxAnnual: 64907 },
-  { id: 'podiatrist', name: 'Podiatrist', maxAnnual: 64907 },
-  { id: 'occupational-therapist', name: 'Occupational Therapist', maxAnnual: 64907 },
-  { id: 'nursing-associate', name: 'Nursing Associate', maxAnnual: 36150 },
-  { id: 'paramedic', name: 'Community Paramedic', maxAnnual: 64907 },
-  { id: 'advanced-practitioner', name: 'Advanced Practitioner', maxAnnual: 73334 },
-  { id: 'mental-health-practitioner', name: 'Mental Health Practitioner', maxAnnual: 36667 }
-];
-
-// Helper function to calculate employer costs (NI + pension)
-function calculateEmployerCosts(salary) {
-  // 13.8% NI + 20.68% pension = 34.48%
-  return Math.round(salary * 0.3448);
-}
-
-// Function to calculate total monthly and annual costs
-function calculateTotalCosts(annualSalary, fte) {
-  const monthlySalary = Math.round((annualSalary / 12) * fte);
-  const employerCosts = calculateEmployerCosts(monthlySalary);
-  const totalMonthlyCost = monthlySalary + employerCosts;
-  const totalAnnualCost = totalMonthlyCost * 12;
-  
-  return {
-    monthlySalary,
-    employerCosts,
-    totalMonthlyCost,
-    totalAnnualCost
-  };
-}
-
-// Array to store staff members
-let staffMembers = [
-  {
-    id: 1,
-    name: 'Jane Smith',
-    role: 'clinical-pharmacist',
-    fte: 1.0,
-    annualSalary: 60000,
-    monthlySalary: 5000,
-    employerCosts: 1724,
-    totalMonthlyCost: 6724,
-    totalAnnualCost: 80688
-  }
-]; function addStaffRow() {
-  const newId = staffMembers.length > 0 ? 
-    Math.max(...staffMembers.map(s => s.id)) + 1 : 1;
-  
-  const defaultRole = ARRS_ROLES[0].id;
-  const defaultAnnualSalary = ARRS_ROLES[0].maxAnnual;
-  const costs = calculateTotalCosts(defaultAnnualSalary, 1.0);
-  
-  // Create new staff member object
-  const newStaff = {
-    id: newId,
-    name: '',
-    role: defaultRole,
-    fte: 1.0,
-    annualSalary: defaultAnnualSalary,
-    monthlySalary: costs.monthlySalary,
-    employerCosts: costs.employerCosts,
-    totalMonthlyCost: costs.totalMonthlyCost,
-    totalAnnualCost: costs.totalAnnualCost
-  };
-  
-  // Add to staff members array
-  staffMembers.push(newStaff);
-  
-  // Now add to the HTML table
-  const table = document.getElementById('staff-table');
-  const row = table.insertRow(-1);
-  row.dataset.staffId = newId;
-  
-  // Create role options for dropdown
-  const roleOptions = ARRS_ROLES.map(role => 
-    `<option value="${role.id}">${role.name}</option>`
-  ).join('');
-  
-  const nameCell = row.insertCell(0);
-  const roleCell = row.insertCell(1);
-  const fteCell = row.insertCell(2);
-  const salaryCell = row.insertCell(3);
-  const costCell = row.insertCell(4);
-  const actionCell = row.insertCell(5);
-  
-  nameCell.innerHTML = `<input type="text" placeholder="Name" onchange="updateStaffMember(${newId}, 'name', this.value)">`;
-  roleCell.innerHTML = `<select onchange="updateStaffMember(${newId}, 'role', this.value)">${roleOptions}</select>`;
-  fteCell.innerHTML = `<input type="number" value="1.0" min="0.1" max="1.0" step="0.1" onchange="updateStaffMember(${newId}, 'fte', this.value)">`;
-  salaryCell.innerHTML = `<input type="number" value="${defaultAnnualSalary}" onchange="updateStaffMember(${newId}, 'annualSalary', this.value)">`;
-  costCell.textContent = '£' + costs.totalAnnualCost.toLocaleString();
-  actionCell.innerHTML = `<button onclick="removeStaffMember(${newId})">Remove</button>`;
-  
-  updateTotalSpend();
-} function updateStaffMember(id, field, value) {
-  // Find the staff member in our array
-  const staffIndex = staffMembers.findIndex(s => s.id === id);
-  if (staffIndex === -1) return;
-  
-  // Update the field
-  if (field === 'fte' || field === 'annualSalary') {
-    // Convert to number for numerical fields
-    value = parseFloat(value);
-  }
-  
-  staffMembers[staffIndex][field] = value;
-  
-  // If we updated role, update the default salary
-  if (field === 'role') {
-    const roleInfo = ARRS_ROLES.find(r => r.id === value);
-    if (roleInfo) {
-      staffMembers[staffIndex].annualSalary = roleInfo.maxAnnual;
-      
-      // Update the salary input in the table
-      const row = document.querySelector(`tr[data-staff-id="${id}"]`);
-      const salaryInput = row.cells[3].querySelector('input');
-      salaryInput.value = roleInfo.maxAnnual;
-    }
-  }
-  
-  // Recalculate costs
-  const staff = staffMembers[staffIndex];
-  const costs = calculateTotalCosts(staff.annualSalary, staff.fte);
-  
-  staffMembers[staffIndex].monthlySalary = costs.monthlySalary;
-  staffMembers[staffIndex].employerCosts = costs.employerCosts;
-  staffMembers[staffIndex].totalMonthlyCost = costs.totalMonthlyCost;
-  staffMembers[staffIndex].totalAnnualCost = costs.totalAnnualCost;
-  
-  // Update the cost cell in the table
-  const row = document.querySelector(`tr[data-staff-id="${id}"]`);
-  if (row) {
-    row.cells[4].textContent = '£' + costs.totalAnnualCost.toLocaleString();
-  }
-  
-  // Update totals
-  updateTotalSpend();
-}
-
-function removeStaffMember(id) {
-  // Remove from array
-  staffMembers = staffMembers.filter(s => s.id !== id);
-  
-  // Remove from table
-  const row = document.querySelector(`tr[data-staff-id="${id}"]`);
-  if (row) {
-    row.remove();
-  }
-  
-  // Update totals
-  updateTotalSpend();
-}
-
-function updateTotalSpend() {
-  const totalCommitted = staffMembers.reduce((sum, staff) => sum + staff.totalAnnualCost, 0);
-  const population = document.getElementById('population').value;
-  const budget = Math.round(population * 26.631);
-  const remaining = budget - totalCommitted;
-  
-  // Update summary cards
-  document.getElementById('committed-spend').textContent = '£' + totalCommitted.toLocaleString();
-  document.getElementById('remaining-budget').textContent = '£' + remaining.toLocaleString();
-  
-  // Change color based on remaining budget
-  const remainingElement = document.getElementById('remaining-budget');
-  if (remaining < 0) {
-    remainingElement.style.color = 'red';
-  } else {
-    remainingElement.style.color = 'black';
-  }
-} function updateBudget() {
-  const population = document.getElementById('population').value;
-  const budget = Math.round(population * 26.631);
-  document.getElementById('total-budget').textContent = '£' + budget.toLocaleString();
-  
-  // Update remaining budget
-  updateTotalSpend();
-} <table id="staff-table">
-    <tr>
-        <th>Name</th>
-        <th>Role</th>
-        <th>FTE</th>
-        <th>Annual Salary</th>
-        <th>Total Cost</th>
-        <th>Actions</th>
-    </tr>
-</table> function initializeStaffTable() {
-  // Clear existing rows except header
-  const table = document.getElementById('staff-table');
-  while (table.rows.length > 1) {
-    table.deleteRow(1);
-  }
-  
-  // Add all staff members
-  staffMembers.forEach(staff => {
-    const row = table.insertRow(-1);
-    row.dataset.staffId = staff.id;
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PCN Workforce Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .card {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .summary {
+            display: flex;
+            gap: 20px;
+        }
+        .summary-card {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            flex: 1;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .button-row {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        .totals-row {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>PCN Workforce Tracker</h1>
     
-    const roleOptions = ARRS_ROLES.map(role => 
-      `<option value="${role.id}" ${role.id === staff.role ? 'selected' : ''}>${role.name}</option>`
-    ).join('');
-    
-    const nameCell = row.insertCell(0);
-    const roleCell = row.insertCell(1);
-    const fteCell = row.insertCell(2);
-    const salaryCell = row.insertCell(3);
-    const costCell = row.insertCell(4);
-    const actionCell = row.insertCell(5);
-    
-    nameCell.innerHTML = `<input type="text" value="${staff.name}" placeholder="Name" onchange="updateStaffMember(${staff.id}, 'name', this.value)">`;
-    roleCell.innerHTML = `<select onchange="updateStaffMember(${staff.id}, 'role', this.value)">${roleOptions}</select>`;
-    fteCell.innerHTML = `<input type="number" value="${staff.fte}" min="0.1" max="1.0" step="0.1" onchange="updateStaffMember(${staff.id}, 'fte', this.value)">`;
-    salaryCell.innerHTML = `<input type="number" value="${staff.annualSalary}" onchange="updateStaffMember(${staff.id}, 'annualSalary', this.value)">`;
-    costCell.textContent = '£' + staff.totalAnnualCost.toLocaleString();
-    actionCell.innerHTML = `<button onclick="removeStaffMember(${staff.id})">Remove</button>`;
-  });
-  
-  updateTotalSpend();
-}
-
-// Add this at the very end of your script section
-window.onload = function() {
-  initializeStaffTable();
-  updateBudget();
-}; // Array to store member practices
-let practices = [
-  { id: 1, name: 'Practice A', listSize: 20000, fairShare: 0 },
-  { id: 2, name: 'Practice B', listSize: 15000, fairShare: 0 },
-  { id: 3, name: 'Practice C', listSize: 15000, fairShare: 0 }
-];
-
-function calculateFairShares() {
-  const totalListSize = practices.reduce((sum, practice) => sum + practice.listSize, 0);
-  const budget = Math.round(document.getElementById('population').value * 26.631);
-  
-  practices.forEach(practice => {
-    practice.fairShare = totalListSize > 0 ? Math.round((practice.listSize / totalListSize) * budget) : 0;
-  });
-  
-  // Update the practices table
-  updatePracticesTable();
-}
-
-function addPractice() {
-  const newId = practices.length > 0 ? Math.max(...practices.map(p => p.id)) + 1 : 1;
-  practices.push({ id: newId, name: `Practice ${newId}`, listSize: 0, fairShare: 0 });
-  calculateFairShares();
-}
-
-function updatePractice(id, field, value) {
-  const practiceIndex = practices.findIndex(p => p.id === id);
-  if (practiceIndex === -1) return;
-  
-  // Convert to number if needed
-  if (field === 'listSize') {
-    value = parseInt(value) || 0;
-  }
-  
-  practices[practiceIndex][field] = value;
-  calculateFairShares();
-}
-
-function removePractice(id) {
-  practices = practices.filter(p => p.id !== id);
-  calculateFairShares();
-}
-
-function updatePracticesTable() {
-  const table = document.getElementById('practices-table');
-  if (!table) return;
-  
-  // Clear existing rows except header
-  while (table.rows.length > 1) {
-    table.deleteRow(1);
-  }
-  
-  // Calculate total
-  const totalListSize = practices.reduce((sum, p) => sum + p.listSize, 0);
-  const totalFairShare = practices.reduce((sum, p) => sum + p.fairShare, 0);
-  
-  // Add all practices
-  practices.forEach(practice => {
-    const row = table.insertRow(-1);
-    row.dataset.practiceId = practice.id;
-    
-    const nameCell = row.insertCell(0);
-    const listSizeCell = row.insertCell(1);
-    const percentCell = row.insertCell(2);
-    const fairShareCell = row.insertCell(3);
-    const actionCell = row.insertCell(4);
-    
-    nameCell.innerHTML = `<input type="text" value="${practice.name}" onchange="updatePractice(${practice.id}, 'name', this.value)">`;
-    listSizeCell.innerHTML = `<input type="number" value="${practice.listSize}" onchange="updatePractice(${practice.id}, 'listSize', this.value)">`;
-    
-    const percent = totalListSize > 0 ? (practice.listSize / totalListSize) * 100 : 0;
-    percentCell.textContent = percent.toFixed(1) + '%';
-    fairShareCell.textContent = '£' + practice.fairShare.toLocaleString();
-    
-    actionCell.innerHTML = `<button onclick="removePractice(${practice.id})" ${practices.length <= 1 ? 'disabled' : ''}>Remove</button>`;
-  });
-  
-  // Add totals row
-  const totalsRow = table.insertRow(-1);
-  totalsRow.className = 'totals-row';
-  
-  const labelCell = totalsRow.insertCell(0);
-  const totalListCell = totalsRow.insertCell(1);
-  const totalPercentCell = totalsRow.insertCell(2);
-  const totalFairShareCell = totalsRow.insertCell(3);
-  const emptyCell = totalsRow.insertCell(4);
-  
-  labelCell.textContent = 'Total';
-  labelCell.style.fontWeight = 'bold';
-  totalListCell.textContent = totalListSize.toLocaleString();
-  totalListCell.style.fontWeight = 'bold';
-  totalPercentCell.textContent = '100%';
-  totalPercentCell.style.fontWeight = 'bold';
-  totalFairShareCell.textContent = '£' + totalFairShare.toLocaleString();
-  totalFairShareCell.style.fontWeight = 'bold';
-} <div class="card">
-    <h2>Member Practices & Fair Shares</h2>
-    <table id="practices-table">
-        <tr>
-            <th>Practice Name</th>
-            <th>List Size</th>
-            <th>Percentage of PCN</th>
-            <th>Fair Share (£)</th>
-            <th>Actions</th>
-        </tr>
-    </table>
-    <button onclick="addPractice()">Add Practice</button>
-</div>
-window.onload = function() {
-  initializeStaffTable();
-  updateBudget();
-  calculateFairShares(); // Initialize fair shares
-}; function exportData() {
-  const data = {
-    pcn: {
-      name: document.getElementById('pcn-name').value,
-      populationSize: parseInt(document.getElementById('population').value),
-      annualBudget: Math.round(parseInt(document.getElementById('population').value) * 26.631)
-    },
-    practices: practices,
-    staffMembers: staffMembers,
-    exportDate: new Date().toISOString()
-  };
-  
-  const dataStr = JSON.stringify(data, null, 2);
-  const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-  
-  const exportFileDefaultName = 'pcn-workforce-data.json';
-  
-  const linkElement = document.createElement('a');
-  linkElement.setAttribute('href', dataUri);
-  linkElement.setAttribute('download', exportFileDefaultName);
-  linkElement.click();
-} <div class="card">
-    <h2>PCN Details</h2>
-    <div>
-        <label for="pcn-name">PCN Name:</label>
-        <input type="text" id="pcn-name" value="Example PCN">
+    <div class="card">
+        <h2>PCN Details</h2>
+        <div>
+            <label for="pcn-name">PCN Name:</label>
+            <input type="text" id="pcn-name" value="Example PCN">
+        </div>
+        <div>
+            <label for="population">Population Size:</label>
+            <input type="number" id="population" value="50000">
+        </div>
+        <div class="button-row">
+            <button onclick="updateBudget()">Update Budget</button>
+            <button onclick="exportData()">Export Data</button>
+        </div>
     </div>
-    <div>
-        <label for="population">Population Size:</label>
-        <input type="number" id="population" value="50000">
+
+    <div class="summary">
+        <div class="summary-card">
+            <h3>Total Budget</h3>
+            <p id="total-budget">£1,331,550</p>
+        </div>
+        <div class="summary-card">
+            <h3>Committed Spend</h3>
+            <p id="committed-spend">£80,688</p>
+        </div>
+        <div class="summary-card">
+            <h3>Remaining Budget</h3>
+            <p id="remaining-budget">£1,250,862</p>
+        </div>
     </div>
-    <div class="button-row">
-        <button onclick="updateBudget()">Update Budget</button>
-        <button onclick="exportData()">Export Data</button>
+
+    <div class="card">
+        <h2>Staff Members</h2>
+        <table id="staff-table">
+            <tr>
+                <th>Name</th>
+                <th>Role</th>
+                <th>FTE</th>
+                <th>Annual Salary</th>
+                <th>Total Cost</th>
+                <th>Actions</th>
+            </tr>
+        </table>
+        <button onclick="addStaffRow()">Add Staff Member</button>
     </div>
-</div> .button-row {
-    margin-top: 10px;
-    display: flex;
-    gap: 10px;
-}
+
+    <div class="card">
+        <h2>Member Practices & Fair Shares</h2>
+        <table id="practices-table">
+            <tr>
+                <th>Practice Name</th>
+                <th>List Size</th>
+                <th>Percentage of PCN</th>
+                <th>Fair Share (£)</th>
+                <th>Actions</th>
+            </tr>
+        </table>
+        <button onclick="addPractice()">Add Practice</button>
+    </div>
+
+    <script>
+        // Define all ARRS roles with their maximum annual reimbursement
+        const ARRS_ROLES = [
+            { id: 'clinical-pharmacist', name: 'Clinical Pharmacist', maxAnnual: 66972 },
+            { id: 'pharmacy-technician', name: 'Pharmacy Technician', maxAnnual: 43352 },
+            { id: 'social-prescriber', name: 'Social Prescribing Link Worker', maxAnnual: 43352 },
+            { id: 'health-wellbeing-coach', name: 'Health and Wellbeing Coach', maxAnnual: 43352 },
+            { id: 'care-coordinator', name: 'Care Coordinator', maxAnnual: 36150 },
+            { id: 'physician-associate', name: 'Physician Associate', maxAnnual: 64907 },
+            { id: 'first-contact-physio', name: 'First Contact Physiotherapist', maxAnnual: 66972 },
+            { id: 'dietician', name: 'Dietician', maxAnnual: 64907 },
+            { id: 'podiatrist', name: 'Podiatrist', maxAnnual: 64907 },
+            { id: 'occupational-therapist', name: 'Occupational Therapist', maxAnnual: 64907 },
+            { id: 'nursing-associate', name: 'Nursing Associate', maxAnnual: 36150 },
+            { id: 'paramedic', name: 'Community Paramedic', maxAnnual: 64907 },
+            { id: 'advanced-practitioner', name: 'Advanced Practitioner', maxAnnual: 73334 },
+            { id: 'mental-health-practitioner', name: 'Mental Health Practitioner', maxAnnual: 36667 }
+        ];
+
+        // Helper function to calculate employer costs (NI + pension)
+        function calculateEmployerCosts(salary) {
+            // 13.8% NI + 20.68% pension = 34.48%
+            return Math.round(salary * 0.3448);
+        }
+
+        // Function to calculate total monthly and annual costs
+        function calculateTotalCosts(annualSalary, fte) {
+            const monthlySalary = Math.round((annualSalary / 12) * fte);
+            const employerCosts = calculateEmployerCosts(monthlySalary);
+            const totalMonthlyCost = monthlySalary + employerCosts;
+            const totalAnnualCost = totalMonthlyCost * 12;
+            
+            return {
+                monthlySalary,
+                employerCosts,
+                totalMonthlyCost,
+                totalAnnualCost
+            };
+        }
+
+        // Array to store staff members
+        let staffMembers = [
+            {
+                id: 1,
+                name: 'Jane Smith',
+                role: 'clinical-pharmacist',
+                fte: 1.0,
+                annualSalary: 60000,
+                monthlySalary: 5000,
+                employerCosts: 1724,
+                totalMonthlyCost: 6724,
+                totalAnnualCost: 80688
+            }
+        ];
+
+        // Array to store member practices
+        let practices = [
+            { id: 1, name: 'Practice A', listSize: 20000, fairShare: 0 },
+            { id: 2, name: 'Practice B', listSize: 15000, fairShare: 0 },
+            { id: 3, name: 'Practice C', listSize: 15000, fairShare: 0 }
+        ];
+
+        function updateBudget() {
+            const population = document.getElementById('population').value;
+            const budget = Math.round(population * 26.631);
+            document.getElementById('total-budget').textContent = '£' + budget.toLocaleString();
+            
+            // Update remaining budget
+            updateTotalSpend();
+            
+            // Update fair shares since budget changed
+            calculateFairShares();
+        }
+
+        function addStaffRow() {
+            const newId = staffMembers.length > 0 ? 
+                Math.max(...staffMembers.map(s => s.id)) + 1 : 1;
+            
+            const defaultRole = ARRS_ROLES[0].id;
+            const defaultAnnualSalary = ARRS_ROLES[0].maxAnnual;
+            const costs = calculateTotalCosts(defaultAnnualSalary, 1.0);
+            
+            // Create new staff member object
+            const newStaff = {
+                id: newId,
+                name: '',
+                role: defaultRole,
+                fte: 1.0,
+                annualSalary: defaultAnnualSalary,
+                monthlySalary: costs.monthlySalary,
+                employerCosts: costs.employerCosts,
+                totalMonthlyCost: costs.totalMonthlyCost,
+                totalAnnualCost: costs.totalAnnualCost
+            };
+            
+            // Add to staff members array
+            staffMembers.push(newStaff);
+            
+            // Now add to the HTML table
+            const table = document.getElementById('staff-table');
+            const row = table.insertRow(-1);
+            row.dataset.staffId = newId;
+            
+            // Create role options for dropdown
+            const roleOptions = ARRS_ROLES.map(role => 
+                `<option value="${role.id}">${role.name}</option>`
+            ).join('');
+            
+            const nameCell = row.insertCell(0);
+            const roleCell = row.insertCell(1);
+            const fteCell = row.insertCell(2);
+            const salaryCell = row.insertCell(3);
+            const costCell = row.insertCell(4);
+            const actionCell = row.insertCell(5);
+            
+            nameCell.innerHTML = `<input type="text" placeholder="Name" onchange="updateStaffMember(${newId}, 'name', this.value)">`;
+            roleCell.innerHTML = `<select onchange="updateStaffMember(${newId}, 'role', this.value)">${roleOptions}</select>`;
+            fteCell.innerHTML = `<input type="number" value="1.0" min="0.1" max="1.0" step="0.1" onchange="updateStaffMember(${newId}, 'fte', this.value)">`;
+            salaryCell.innerHTML = `<input type="number" value="${defaultAnnualSalary}" onchange="updateStaffMember(${newId}, 'annualSalary', this.value)">`;
+            costCell.textContent = '£' + costs.totalAnnualCost.toLocaleString();
+            actionCell.innerHTML = `<button onclick="removeStaffMember(${newId})">Remove</button>`;
+            
+            updateTotalSpend();
+        }
+
+        function updateStaffMember(id, field, value) {
+            // Find the staff member in our array
+            const staffIndex = staffMembers.findIndex(s => s.id === id);
+            if (staffIndex === -1) return;
+            
+            // Update the field
+            if (field === 'fte' || field === 'annualSalary') {
+                // Convert to number for numerical fields
+                value = parseFloat(value);
+            }
+            
+            staffMembers[staffIndex][field] = value;
+            
+            // If we updated role, update the default salary
+            if (field === 'role') {
+                const roleInfo = ARRS_ROLES.find(r => r.id === value);
+                if (roleInfo) {
+                    staffMembers[staffIndex].annualSalary = roleInfo.maxAnnual;
+                    
+                    // Update the salary input in the table
+                    const row = document.querySelector(`tr[data-staff-id="${id}"]`);
+                    const salaryInput = row.cells[3].querySelector('input');
+                    salaryInput.value = roleInfo.maxAnnual;
+                }
+            }
+            
+            // Recalculate costs
+            const staff = staffMembers[staffIndex];
+            const costs = calculateTotalCosts(staff.annualSalary, staff.fte);
+            
+            staffMembers[staffIndex].monthlySalary = costs.monthlySalary;
+            staffMembers[staffIndex].employerCosts = costs.employerCosts;
+            staffMembers[staffIndex].totalMonthlyCost = costs.totalMonthlyCost;
+            staffMembers[staffIndex].totalAnnualCost = costs.totalAnnualCost;
+            
+            // Update the cost cell in the table
+            const row = document.querySelector(`tr[data-staff-id="${id}"]`);
+            if (row) {
+                row.cells[4].textContent = '£' + costs.totalAnnualCost.toLocaleString();
+            }
+            
+            // Update totals
+            updateTotalSpend();
+        }
+
+        function removeStaffMember(id) {
+            // Remove from array
+            staffMembers = staffMembers.filter(s => s.id !== id);
+            
+            // Remove from table
+            const row = document.querySelector(`tr[data-staff-id="${id}"]`);
+            if (row) {
+                row.remove();
+            }
+            
+            // Update totals
+            updateTotalSpend();
+        }
+
+        function updateTotalSpend() {
+            const totalCommitted = staffMembers.reduce((sum, staff) => sum + staff.totalAnnualCost, 0);
+            const population = document.getElementById('population').value;
+            const budget = Math.round(population * 26.631);
+            const remaining = budget - totalCommitted;
+            
+            // Update summary cards
+            document.getElementById('committed-spend').textContent = '£' + totalCommitted.toLocaleString();
+            document.getElementById('remaining-budget').textContent = '£' + remaining.toLocaleString();
+            
+            // Change color based on remaining budget
+            const remainingElement = document.getElementById('remaining-budget');
+            if (remaining < 0) {
+                remainingElement.style.color = 'red';
+            } else {
+                remainingElement.style.color = 'black';
+            }
+        }
+
+        function calculateFairShares() {
+            const totalListSize = practices.reduce((sum, practice) => sum + practice.listSize, 0);
+            const budget = Math.round(document.getElementById('population').value * 26.631);
+            
+            practices.forEach(practice => {
+                practice.fairShare = totalListSize > 0 ? Math.round((practice.listSize / totalListSize) * budget) : 0;
+            });
+            
+            // Update the practices table
+            updatePracticesTable();
+        }
+
+        function addPractice() {
+            const newId = practices.length > 0 ? Math.max(...practices.map(p => p.id)) + 1 : 1;
+            practices.push({ id: newId, name: `Practice ${newId}`, listSize: 0, fairShare: 0 });
+            calculateFairShares();
+        }
+
+        function updatePractice(id, field, value) {
+            const practiceIndex = practices.findIndex(p => p.id === id);
+            if (practiceIndex === -1) return;
+            
+            // Convert to number if needed
+            if (field === 'listSize') {
+                value = parseInt(value) || 0;
+            }
+            
+            practices[practiceIndex][field] = value;
+            calculateFairShares();
+        }
+
+        function removePractice(id) {
+            practices = practices.filter(p => p.id !== id);
+            calculateFairShares();
+        }
+
+        function updatePracticesTable() {
+            const table = document.getElementById('practices-table');
+            if (!table) return;
+            
+            // Clear existing rows except header
+            while (table.rows.length > 1) {
+                table.deleteRow(1);
+            }
+            
+            // Calculate total
+            const totalListSize = practices.reduce((sum, p) => sum + p.listSize, 0);
+            const totalFairShare = practices.reduce((sum, p) => sum + p.fairShare, 0);
+            
+            // Add all practices
+            practices.forEach(practice => {
+                const row = table.insertRow(-1);
+                row.dataset.practiceId = practice.id;
+                
+                const nameCell = row.insertCell(0);
+                const listSizeCell = row.insertCell(1);
+                const percentCell = row.insertCell(2);
+                const fairShareCell = row.insertCell(3);
+                const actionCell = row.insertCell(4);
+                
+                nameCell.innerHTML = `<input type="text" value="${practice.name}" onchange="updatePractice(${practice.id}, 'name', this.value)">`;
+                listSizeCell.innerHTML = `<input type="number" value="${practice.listSize}" onchange="updatePractice(${practice.id}, 'listSize', this.value)">`;
+                
+                const percent = totalListSize > 0 ? (practice.listSize / totalListSize) * 100 : 0;
+                percentCell.textContent = percent.toFixed(1) + '%';
+                fairShareCell.textContent = '£' + practice.fairShare.toLocaleString();
+                
+                actionCell.innerHTML = `<button onclick="removePractice(${practice.id})" ${practices.length <= 1 ? 'disabled' : ''}>Remove</button>`;
+            });
+            
+            // Add totals row
+            const totalsRow = table.insertRow(-1);
+            totalsRow.className = 'totals-row';
+            
+            const labelCell = totalsRow.insertCell(0);
+            const totalListCell = totalsRow.insertCell(1);
+            const totalPercentCell = totalsRow.insertCell(2);
+            const totalFairShareCell = totalsRow.insertCell(3);
+            const emptyCell = totalsRow.insertCell(4);
+            
+            labelCell.textContent = 'Total';
+            labelCell.style.fontWeight = 'bold';
+            totalListCell.textContent = totalListSize.toLocaleString();
+            totalListCell.style.fontWeight = 'bold';
+            totalPercentCell.textContent = '100%';
+            totalPercentCell.style.fontWeight = 'bold';
+            totalFairShareCell.textContent = '£' + totalFairShare.toLocaleString();
+            totalFairShareCell.style.fontWeight = 'bold';
+        }
+
+        function initializeStaffTable() {
+            // Clear existing rows except header
+            const table = document.getElementById('staff-table');
+            while (table.rows.length > 1) {
+                table.deleteRow(1);
+            }
+            
+            // Add all staff members
+            staffMembers.forEach(staff => {
+                const row = table.insertRow(-1);
+                row.dataset.staffId = staff.id;
+                
+                const roleOptions = ARRS_ROLES.map(role => 
+                    `<option value="${role.id}" ${role.id === staff.role ? 'selected' : ''}>${role.name}</option>`
+                ).join('');
+                
+                const nameCell = row.insertCell(0);
+                const roleCell = row.insertCell(1);
+                const fteCell = row.insertCell(2);
+                const salaryCell = row.insertCell(3);
+                const costCell = row.insertCell(4);
+                const actionCell = row.insertCell(5);
+                
+                nameCell.innerHTML = `<input type="text" value="${staff.name}" placeholder="Name" onchange="updateStaffMember(${staff.id}, 'name', this.value)">`;
+                roleCell.innerHTML = `<select onchange="updateStaffMember(${staff.id}, 'role', this.value)">${roleOptions}</select>`;
+                fteCell.innerHTML = `<input type="number" value="${staff.fte}" min="0.1" max="1.0" step="0.1" onchange="updateStaffMember(${staff.id}, 'fte', this.value)">`;
+                salaryCell.innerHTML = `<input type="number" value="${staff.annualSalary}" onchange="updateStaffMember(${staff.id}, 'annualSalary', this.value)">`;
+                costCell.textContent = '£' + staff.totalAnnualCost.toLocaleString();
+                actionCell.innerHTML = `<button onclick="removeStaffMember(${staff.id})">Remove</button>`;
+            });
+            
+            updateTotalSpend();
+        }
+
+        function exportData() {
+            const data = {
+                pcn: {
+                    name: document.getElementById('pcn-name').value,
+                    populationSize: parseInt(document.getElementById('population').value),
+                    annualBudget: Math.round(parseInt(document.getElementById('population').value) * 26.631)
+                },
+                practices: practices,
+                staffMembers: staffMembers,
+                exportDate: new Date().toISOString()
+            };
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileDefaultName = 'pcn-workforce-data.json';
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        }
+
+        // Initialize tables and data when the page loads
+        window.onload = function() {
+            initializeStaffTable();
+            updateBudget();
+            calculateFairShares(); // Initialize fair shares
+        };
+    </script>
+</body>
+</html>
