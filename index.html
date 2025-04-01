@@ -1,133 +1,55 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>PCN Workforce Tracker</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        .card {
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        .summary {
-            display: flex;
-            gap: 20px;
-        }
-        .summary-card {
-            background-color: #f0f0f0;
-            padding: 10px;
-            border-radius: 5px;
-            flex: 1;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body>
-    <h1>PCN Workforce Tracker</h1>
-    
-    <div class="card">
-        <h2>PCN Details</h2>
-        <div>
-            <label for="pcn-name">PCN Name:</label>
-            <input type="text" id="pcn-name" value="Example PCN">
-        </div>
-        <div>
-            <label for="population">Population Size:</label>
-            <input type="number" id="population" value="50000">
-        </div>
-        <button onclick="updateBudget()">Update Budget</button>
-    </div>
+    const totalCost = calculateTotalCost(salary, fte);
+                 row.cells[4].textContent = formatCurrency(totalCost);
 
-    <div class="summary">
-        <div class="summary-card">
-            <h3>Total Budget</h3>
-            <p id="total-budget">£1,331,550</p>
-        </div>
-        <div class="summary-card">
-            <h3>Committed Spend</h3>
-            <p id="committed-spend">£80,688</p>
-        </div>
-        <div class="summary-card">
-            <h3>Remaining Budget</h3>
-            <p id="remaining-budget">£1,250,862</p>
-        </div>
-    </div>
+                 updateTotals();
+             }
 
-    <div class="card">
-        <h2>Staff Members</h2>
-        <table id="staff-table">
-            <tr>
-                <th>Name</th>
-                <th>Role</th>
-                <th>FTE</th>
-                <th>Annual Salary</th>
-                <th>Total Cost</th>
-                <th>Actions</th>
-            </tr>
-            <tr>
-                <td>Jane Smith</td>
-                <td>Clinical Pharmacist</td>
-                <td>1.0</td>
-                <td>£60,000</td>
-                <td>£80,688</td>
-                <td><button>Remove</button></td>
-            </tr>
-        </table>
-        <button onclick="addStaffRow()">Add Staff Member</button>
-    </div>
+             function addStaffRow() {
+                 const table = document.getElementById('staff-table');
+                 const row = table.querySelector('tbody').insertRow(-1);
 
-    <script>
-        function updateBudget() {
-            const population = document.getElementById('population').value;
-            const budget = Math.round(population * 26.631);
-            document.getElementById('total-budget').textContent = '£' + budget.toLocaleString();
-            
-            // Recalculate remaining budget
-            const committed = parseInt(document.getElementById('committed-spend').textContent.replace(/[£,]/g, ''));
-            document.getElementById('remaining-budget').textContent = '£' + (budget - committed).toLocaleString();
-        }
+                 const nameCell = row.insertCell(0);
+                 const roleCell = row.insertCell(1);
+                 const fteCell = row.insertCell(2);
+                 const salaryCell = row.insertCell(3);
+                 const costCell = row.insertCell(4);
+                 const actionCell = row.insertCell(5);
 
-        function addStaffRow() {
-            const table = document.getElementById('staff-table');
-            const row = table.insertRow(-1);
-            
-            const nameCell = row.insertCell(0);
-            const roleCell = row.insertCell(1);
-            const fteCell = row.insertCell(2);
-            const salaryCell = row.insertCell(3);
-            const costCell = row.insertCell(4);
-            const actionCell = row.insertCell(5);
-            
-            nameCell.innerHTML = '<input type="text" placeholder="Name">';
-            roleCell.innerHTML = '<select><option>Clinical Pharmacist</option><option>Social Prescriber</option></select>';
-            fteCell.innerHTML = '<input type="number" value="1.0" min="0.1" max="1.0" step="0.1">';
-            salaryCell.innerHTML = '<input type="number" value="60000">';
-            costCell.textContent = '£80,688';
-            actionCell.innerHTML = '<button onclick="this.parentNode.parentNode.remove()">Remove</button>';
-        }
-    </script>
-</body>
-</html>
+                 nameCell.innerHTML = '<input type="text" placeholder="Name">';
+                 roleCell.innerHTML = '<select><option>Clinical Pharmacist</option><option>Social Prescriber</option><option>First Contact
+     Physiotherapist</option><option>Physician Associate</option><option>Paramedic</option><option>Mental Health 
+     Practitioner</option></select>';
+
+                 const fteInput = document.createElement('input');
+                 fteInput.type = 'number';
+                 fteInput.value = '1.0';
+                 fteInput.min = '0.1';
+                 fteInput.max = '1.0';
+                 fteInput.step = '0.1';
+                 fteInput.addEventListener('input', () => updateRowCost(row));
+                 fteCell.appendChild(fteInput);
+
+                 const salaryInput = document.createElement('input');
+                 salaryInput.type = 'number';
+                 salaryInput.value = '60000';
+                 salaryInput.min = '0';
+                 salaryInput.addEventListener('input', () => updateRowCost(row));
+                 salaryCell.appendChild(salaryInput);
+
+                 costCell.textContent = formatCurrency(calculateTotalCost(60000, 1.0));
+                 actionCell.innerHTML = '<button class="remove" onclick="removeStaffRow(this)">Remove</button>';
+
+                 updateTotals();
+             }
+
+             function removeStaffRow(button) {
+                 const row = button.closest('tr');
+                 row.remove();
+                 updateTotals();
+             }
+
+             // Initialize calculations
+             updateBudget();
+         </script>
+     </body>
+     </html>
